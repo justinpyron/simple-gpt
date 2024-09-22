@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "simple-gpt"
+version = "0.1.0"
+description = ""
+authors = ["Justin Pyron <justinpyron@gmail.com>"]
+readme = "README.md"
+packages = [{include = "simple_gpt"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+numpy = "^2.1.1"
+pandas = "^2.2.3"
+torch = "^2.4.1"
+matplotlib = "^3.9.2"
+plotly = "^5.24.1"
+seaborn = "^0.13.2"
+streamlit = "^1.38.0"
+jupyterlab = "^4.2.5"
+ipykernel = "^6.29.5"
+ipywidgets = "^8.1.5"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
