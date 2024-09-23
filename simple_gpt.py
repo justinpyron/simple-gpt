@@ -30,8 +30,8 @@ class AttentionHead(nn.Module):
         Q = self.query(x)
         V = self.value(x)
         scores = Q @ K.transpose(-2,-1) / self.head_size**0.5
-        # TODO: compute auto-regressive mask
-        attention_weights = F.softmax(scores, dim=-1)
+        scores_autoregressive_masking = scores.masked_fill(torch.tril(scores) == 0, float('-inf'))
+        attention_weights = F.softmax(scores_autoregressive_masking, dim=-1)
         out = attention_weights @ V
         return out
 
