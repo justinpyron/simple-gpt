@@ -5,7 +5,28 @@ from torch.nn import functional as F
 
 # Global variables
 EMBEDDING_DIM = 32
-WINDOW_SIZE = 200
+WINDOW_SIZE = 20
+
+
+class AttentionHead(nn.Module):
+
+    def __init__(
+        self,
+        dim_emb: int,
+        head_size: int,
+    ):
+        super().__init__()
+        self.key = nn.Linear(dim_emb, head_size)
+        self.query = nn.Linear(dim_emb, head_size)
+        self.value = nn.Linear(dim_emb, head_size)
+
+    def forward(
+        self,
+        x: torch.tensor,  # (B, T, C)
+    ):
+        pass
+
+
 
 
 class SimpleGPT(nn.Module):
@@ -22,16 +43,20 @@ class SimpleGPT(nn.Module):
 
     def forward(
         self,
-        x: torch.tensor, # Batch of token indices
+        x: torch.tensor,  # Tensor of token indices of shape (B, T)
         y: torch.tensor = None,
     ):
         B, T = x.shape  # batch size, sequence length
         token_embedding = self.token_emb(x)
         position_embedding = self.position_emb(torch.arange(T))
         x = token_embedding + position_embedding
-        x = self.final_linear(x)
-        return x
-        # TODO: compute loss if y is not None
+        logits = self.final_linear(x)
+        if y is None:
+            return logits
+        else:
+            B, T, C = logits.shape  # batch size, sequence length, number of classes
+            loss = F.cross_entropy(logits.view(B*T, C), y.view(B*T))
+            return loss
 
 
     def generate(
