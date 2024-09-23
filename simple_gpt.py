@@ -12,21 +12,28 @@ class AttentionHead(nn.Module):
 
     def __init__(
         self,
-        dim_emb: int,
+        emd_dim: int,
         head_size: int,
-    ):
+    ) -> None:
         super().__init__()
-        self.key = nn.Linear(dim_emb, head_size)
-        self.query = nn.Linear(dim_emb, head_size)
-        self.value = nn.Linear(dim_emb, head_size)
+        self.emd_dim = emd_dim
+        self.head_size = head_size
+        self.key = nn.Linear(emd_dim, head_size)
+        self.query = nn.Linear(emd_dim, head_size)
+        self.value = nn.Linear(emd_dim, head_size)
 
     def forward(
         self,
-        x: torch.tensor,  # (B, T, C)
-    ):
-        pass
-
-
+        x: torch.tensor,
+    ) -> torch.tensor:
+        K = self.key(x)
+        Q = self.query(x)
+        V = self.value(x)
+        scores = Q @ K.transpose(-2,-1) / self.head_size**0.5
+        # TODO: compute auto-regressive mask
+        attention_weights = F.softmax(scores, dim=-1)
+        out = attention_weights @ V
+        return out
 
 
 class SimpleGPT(nn.Module):
@@ -45,7 +52,7 @@ class SimpleGPT(nn.Module):
         self,
         x: torch.tensor,  # Tensor of token indices of shape (B, T)
         y: torch.tensor = None,
-    ):
+    ): # TODO: add type hint
         B, T = x.shape  # batch size, sequence length
         token_embedding = self.token_emb(x)
         position_embedding = self.position_emb(torch.arange(T))
