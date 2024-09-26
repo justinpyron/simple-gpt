@@ -12,7 +12,6 @@ class AttentionHead(nn.Module):
         dropout: float,
     ) -> None:
         super().__init__()
-        self.dim_embedding = dim_embedding
         self.dim_head = dim_head
         self.key = nn.Linear(dim_embedding, dim_head)
         self.query = nn.Linear(dim_embedding, dim_head)
@@ -44,9 +43,6 @@ class MultiHeadedAttention(nn.Module):
         dropout: float,
     ) -> None:
         super().__init__()
-        self.dim_embedding = dim_embedding
-        self.dim_head = dim_head
-        self.num_heads = num_heads
         self.heads = nn.ModuleList([AttentionHead(dim_embedding, dim_head, dropout) for i in range(num_heads)])
         self.linear = nn.Linear(dim_head * num_heads, dim_embedding)
 
@@ -67,10 +63,10 @@ class TransformerBlock(nn.Module):
         dropout: float,
     ) -> None:
         super().__init__()
-        self.ln_1 = nn.LayerNorm(dim_embedding)
+        self.layernorm_1 = nn.LayerNorm(dim_embedding)
         self.attention = MultiHeadedAttention(dim_embedding, dim_head, num_heads, dropout)
         self.dropout1 = nn.Dropout(dropout)
-        self.ln_2 = nn.LayerNorm(dim_embedding)
+        self.layernorm_2 = nn.LayerNorm(dim_embedding)
         self.mlp = nn.Sequential(
             nn.Linear(dim_embedding, dim_mlp),
             nn.GELU(),
@@ -79,16 +75,16 @@ class TransformerBlock(nn.Module):
         self.dropout2 = nn.Dropout(dropout)
 
     def forward(self, x):
-        x = x + self.dropout1(self.attention(self.ln_1(x)))
-        x = x + self.dropout2(self.mlp(self.ln_2(x)))
+        x = x + self.dropout1(self.attention(self.layernorm_1(x)))
+        x = x + self.dropout2(self.mlp(self.layernorm_2(x)))
         return x
 
 
-WINDOW_SIZE = 50
+WINDOW_SIZE = 100
 DIM_EMBEDDING = 64
-DIM_HEAD = 128
+DIM_HEAD = 32
 NUM_HEADS = 8
-DIM_MLP = 256
+DIM_MLP = 128
 DROPOUT = 0.3
 NUM_BLOCKS = 3
 
@@ -105,8 +101,8 @@ class SimpleGPT(nn.Module):
         self.transformer_blocks = nn.Sequential(
             *[TransformerBlock(DIM_EMBEDDING, DIM_HEAD, NUM_HEADS, DIM_MLP, DROPOUT) for i in range(NUM_BLOCKS)]
         )
-        self.ln = nn.LayerNorm(DIM_EMBEDDING)
-        self.final_linear = nn.Linear(DIM_EMBEDDING, vocab_size)
+        self.layernorm = nn.LayerNorm(DIM_EMBEDDING)
+        self.classification_head = nn.Linear(DIM_EMBEDDING, vocab_size)
 
     def forward(
         self,
@@ -118,8 +114,8 @@ class SimpleGPT(nn.Module):
         position_embedding = self.position_emb(torch.arange(T))
         x = token_embedding + position_embedding
         x = self.transformer_blocks(x)
-        x = self.ln(x)
-        logits = self.final_linear(x)
+        x = self.layernorm(x)
+        logits = self.classification_head(x)
         if y is None:
             return logits
         else:
