@@ -12,15 +12,15 @@ class AttentionHead(nn.Module):
 
     def __init__(
         self,
-        emd_dim: int,
-        head_size: int,
+        dim_embedding: int,
+        dim_head: int,
     ) -> None:
         super().__init__()
-        self.emd_dim = emd_dim
-        self.head_size = head_size
-        self.key = nn.Linear(emd_dim, head_size)
-        self.query = nn.Linear(emd_dim, head_size)
-        self.value = nn.Linear(emd_dim, head_size)
+        self.dim_embedding = dim_embedding
+        self.dim_head = dim_head
+        self.key = nn.Linear(dim_embedding, dim_head)
+        self.query = nn.Linear(dim_embedding, dim_head)
+        self.value = nn.Linear(dim_embedding, dim_head)
 
     def forward(
         self,
@@ -29,11 +29,33 @@ class AttentionHead(nn.Module):
         K = self.key(x)
         Q = self.query(x)
         V = self.value(x)
-        scores = Q @ K.transpose(-2,-1) / self.head_size**0.5
-        scores_autoregressive_masking = scores.masked_fill(torch.tril(scores) == 0, float('-inf'))
-        attention_weights = F.softmax(scores_autoregressive_masking, dim=-1)
+        scores = Q @ K.transpose(-2, -1) / self.dim_head**0.5
+        scores_autoregressive_mask = scores.masked_fill(torch.tril(scores) == 0, float('-inf'))
+        attention_weights = F.softmax(scores_autoregressive_mask, dim=-1)
         out = attention_weights @ V
         return out
+
+
+class MultiHeadedAttention(nn.Module):
+
+    def __init__(
+        self,
+        dim_embedding: int,
+        dim_head: int,
+        num_heads: int,
+    ) -> None:
+        super().__init__()
+        self.dim_embedding = dim_embedding
+        self.dim_head = dim_head
+        self.num_heads = num_heads
+        self.heads = nn.ModuleList([AttentionHead(dim_embedding, dim_head) for i in range(num_heads)])
+        self.linear = nn.Linear(dim_head * num_heads, dim_embedding)
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        x = torch.cat([head(x) for head in self.heads], dim=-1)
+        print(f"x.shape = {x.shape}")
+        x = self.linear(x)
+        return x
 
 
 class SimpleGPT(nn.Module):
@@ -46,7 +68,6 @@ class SimpleGPT(nn.Module):
         self.token_emb = nn.Embedding(vocab_size, EMBEDDING_DIM)
         self.position_emb = nn.Embedding(WINDOW_SIZE, EMBEDDING_DIM)
         self.final_linear = nn.Linear(EMBEDDING_DIM, vocab_size)
-
 
     def forward(
         self,
@@ -64,7 +85,6 @@ class SimpleGPT(nn.Module):
             B, T, C = logits.shape  # batch size, sequence length, number of classes
             loss = F.cross_entropy(logits.view(B*T, C), y.view(B*T))
             return loss
-
 
     def generate(
         self,
