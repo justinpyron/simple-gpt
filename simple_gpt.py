@@ -9,6 +9,7 @@ class AttentionHead(nn.Module):
         self,
         dim_embedding: int,
         dim_head: int,
+        dropout: float,
     ) -> None:
         super().__init__()
         self.dim_embedding = dim_embedding
@@ -16,6 +17,7 @@ class AttentionHead(nn.Module):
         self.key = nn.Linear(dim_embedding, dim_head)
         self.query = nn.Linear(dim_embedding, dim_head)
         self.value = nn.Linear(dim_embedding, dim_head)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(
         self,
@@ -27,6 +29,7 @@ class AttentionHead(nn.Module):
         scores = Q @ K.transpose(-2, -1) / self.dim_head**0.5
         scores_autoregressive_mask = scores.masked_fill(torch.tril(scores) == 0, float('-inf'))
         attention_weights = F.softmax(scores_autoregressive_mask, dim=-1)
+        attention_weights = self.dropout(attention_weights)
         out = attention_weights @ V
         return out
 
@@ -38,12 +41,13 @@ class MultiHeadedAttention(nn.Module):
         dim_embedding: int,
         dim_head: int,
         num_heads: int,
+        dropout: float,
     ) -> None:
         super().__init__()
         self.dim_embedding = dim_embedding
         self.dim_head = dim_head
         self.num_heads = num_heads
-        self.heads = nn.ModuleList([AttentionHead(dim_embedding, dim_head) for i in range(num_heads)])
+        self.heads = nn.ModuleList([AttentionHead(dim_embedding, dim_head, dropout) for i in range(num_heads)])
         self.linear = nn.Linear(dim_head * num_heads, dim_embedding)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
@@ -60,21 +64,23 @@ class TransformerBlock(nn.Module):
         dim_head: int,
         num_heads: int,
         dim_mlp: int,
-
+        dropout: float,
     ) -> None:
         super().__init__()
         self.ln_1 = nn.LayerNorm(dim_embedding)
-        self.attention = MultiHeadedAttention(dim_embedding, dim_head, num_heads)
+        self.attention = MultiHeadedAttention(dim_embedding, dim_head, num_heads, dropout)
+        self.dropout1 = nn.Dropout(dropout)
         self.ln_2 = nn.LayerNorm(dim_embedding)
         self.mlp = nn.Sequential(
             nn.Linear(dim_embedding, dim_mlp),
             nn.GELU(),
             nn.Linear(dim_mlp, dim_embedding),
         )
+        self.dropout2 = nn.Dropout(dropout)
 
     def forward(self, x):
-        x = x + self.attention(self.ln_1(x))
-        x = x + self.mlp(self.ln_2(x))
+        x = x + self.dropout1(self.attention(self.ln_1(x)))
+        x = x + self.dropout2(self.mlp(self.ln_2(x)))
         return x
 
 
@@ -83,6 +89,8 @@ DIM_EMBEDDING = 64
 DIM_HEAD = 128
 NUM_HEADS = 8
 DIM_MLP = 256
+DROPOUT = 0.3
+NUM_BLOCKS = 3
 
 
 class SimpleGPT(nn.Module):
@@ -94,7 +102,9 @@ class SimpleGPT(nn.Module):
         super().__init__()
         self.token_emb = nn.Embedding(vocab_size, DIM_EMBEDDING)
         self.position_emb = nn.Embedding(WINDOW_SIZE, DIM_EMBEDDING)
-        self.transformer_blocks = nn.Sequential(*[TransformerBlock(DIM_EMBEDDING, DIM_HEAD, NUM_HEADS, DIM_MLP) for i in range(4)])
+        self.transformer_blocks = nn.Sequential(
+            *[TransformerBlock(DIM_EMBEDDING, DIM_HEAD, NUM_HEADS, DIM_MLP, DROPOUT) for i in range(NUM_BLOCKS)]
+        )
         self.ln = nn.LayerNorm(DIM_EMBEDDING)
         self.final_linear = nn.Linear(DIM_EMBEDDING, vocab_size)
 
