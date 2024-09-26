@@ -53,8 +53,31 @@ class MultiHeadedAttention(nn.Module):
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         x = torch.cat([head(x) for head in self.heads], dim=-1)
-        print(f"x.shape = {x.shape}")
         x = self.linear(x)
+        return x
+
+
+class TransformerBlock(nn.Module):
+
+    def __init__(
+        self,
+        dim_embedding: int,
+        dim_head: int,
+        num_heads: int,
+        dim_mlp: int,
+
+    ) -> None:
+        super().__init__()
+        self.attention = MultiHeadedAttention(dim_embedding, dim_head, num_heads)
+        self.mlp = nn.Sequential(
+            nn.Linear(dim_embedding, dim_mlp),
+            nn.GELU(),
+            nn.Linear(dim_mlp, dim_embedding),
+        )
+
+    def forward(self, x):
+        x = self.attention(x)
+        x = self.mlp(x)
         return x
 
 
