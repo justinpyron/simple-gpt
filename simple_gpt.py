@@ -3,11 +3,6 @@ from torch import nn
 from torch.nn import functional as F
 
 
-# Global variables
-EMBEDDING_DIM = 32
-WINDOW_SIZE = 20
-
-
 class AttentionHead(nn.Module):
 
     def __init__(
@@ -81,6 +76,13 @@ class TransformerBlock(nn.Module):
         return x
 
 
+WINDOW_SIZE = 50
+DIM_EMBEDDING = 64
+DIM_HEAD = 128
+NUM_HEADS = 8
+DIM_MLP = 256
+
+
 class SimpleGPT(nn.Module):
 
     def __init__(
@@ -88,24 +90,26 @@ class SimpleGPT(nn.Module):
         vocab_size: int,
     ):
         super().__init__()
-        self.token_emb = nn.Embedding(vocab_size, EMBEDDING_DIM)
-        self.position_emb = nn.Embedding(WINDOW_SIZE, EMBEDDING_DIM)
-        self.final_linear = nn.Linear(EMBEDDING_DIM, vocab_size)
+        self.token_emb = nn.Embedding(vocab_size, DIM_EMBEDDING)
+        self.position_emb = nn.Embedding(WINDOW_SIZE, DIM_EMBEDDING)
+        self.transformer_block = TransformerBlock(DIM_EMBEDDING, DIM_HEAD, NUM_HEADS, DIM_MLP)
+        self.final_linear = nn.Linear(DIM_EMBEDDING, vocab_size)
 
     def forward(
         self,
-        x: torch.tensor,  # Tensor of token indices of shape (B, T)
+        x: torch.tensor,  # Tensor of token vocab indices of shape (B, T) = (batch size, sequence size)
         y: torch.tensor = None,
-    ): # TODO: add type hint
-        B, T = x.shape  # batch size, sequence length
+    ):
+        B, T = x.shape
         token_embedding = self.token_emb(x)
         position_embedding = self.position_emb(torch.arange(T))
         x = token_embedding + position_embedding
+        x = self.transformer_block(x)
         logits = self.final_linear(x)
         if y is None:
             return logits
         else:
-            B, T, C = logits.shape  # batch size, sequence length, number of classes
+            B, T, C = logits.shape
             loss = F.cross_entropy(logits.view(B*T, C), y.view(B*T))
             return loss
 
