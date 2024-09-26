@@ -63,7 +63,9 @@ class TransformerBlock(nn.Module):
 
     ) -> None:
         super().__init__()
+        self.ln_1 = nn.LayerNorm(dim_embedding)
         self.attention = MultiHeadedAttention(dim_embedding, dim_head, num_heads)
+        self.ln_2 = nn.LayerNorm(dim_embedding)
         self.mlp = nn.Sequential(
             nn.Linear(dim_embedding, dim_mlp),
             nn.GELU(),
@@ -71,8 +73,8 @@ class TransformerBlock(nn.Module):
         )
 
     def forward(self, x):
-        x = self.attention(x)
-        x = self.mlp(x)
+        x = x + self.attention(self.ln_1(x))
+        x = x + self.mlp(self.ln_2(x))
         return x
 
 
@@ -92,7 +94,8 @@ class SimpleGPT(nn.Module):
         super().__init__()
         self.token_emb = nn.Embedding(vocab_size, DIM_EMBEDDING)
         self.position_emb = nn.Embedding(WINDOW_SIZE, DIM_EMBEDDING)
-        self.transformer_block = TransformerBlock(DIM_EMBEDDING, DIM_HEAD, NUM_HEADS, DIM_MLP)
+        self.transformer_blocks = nn.Sequential(*[TransformerBlock(DIM_EMBEDDING, DIM_HEAD, NUM_HEADS, DIM_MLP) for i in range(4)])
+        self.ln = nn.LayerNorm(DIM_EMBEDDING)
         self.final_linear = nn.Linear(DIM_EMBEDDING, vocab_size)
 
     def forward(
@@ -104,7 +107,8 @@ class SimpleGPT(nn.Module):
         token_embedding = self.token_emb(x)
         position_embedding = self.position_emb(torch.arange(T))
         x = token_embedding + position_embedding
-        x = self.transformer_block(x)
+        x = self.transformer_blocks(x)
+        x = self.ln(x)
         logits = self.final_linear(x)
         if y is None:
             return logits
