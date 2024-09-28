@@ -1,7 +1,8 @@
 import torch
 from dataloader import BookDataLoader
 from simple_gpt import SimpleGPT
-from torch.optim import Adam
+from torch.optim import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 import os
 import time
 from datetime import datetime, UTC
@@ -15,19 +16,20 @@ class Trainer:
     def __init__(
         self,
         model : SimpleGPT,
-        optimizer : Adam,
         dataloader : BookDataLoader,
+        lr : float,
+        T_0: int,
+        T_mult: int,
         save_dir : str,
     ) -> None:
         self.model = model.to(DEVICE)
-        self.optimizer = optimizer
         self.dataloader = dataloader
         self.save_dir = save_dir
         self.batches_trained_on = 0
         self.loss_curve = list()
         self.birthday = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M")
-
-        # Initialize optimizer
+        self.optimizer = AdamW(self.model.parameters(), lr=lr)
+        self.scheduler = CosineAnnealingWarmRestarts(self.optimizer, T_0=T_0, T_mult=T_mult)
 
 
     def evaluate(
@@ -53,6 +55,7 @@ class Trainer:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+        self.scheduler.step()
 
 
     def launch_train_session(
@@ -75,7 +78,7 @@ class Trainer:
                     self.save()
                     best_loss = loss
                 if verbose:
-                    print(f"Batch {self.batches_trained_on:5} | VAL LOSS = {loss:6.3f} | {torch.tensor(execution_time).mean():6.3f} s/batch")
+                    print(f"Batch {self.batches_trained_on:5} | VAL LOSS = {loss:6.3f} | {torch.tensor(execution_time).mean():6.3f} s/batch | lr = {self.scheduler._last_lr[0]:.5f}")
             self.batches_trained_on += 1
 
 
