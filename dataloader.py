@@ -2,24 +2,26 @@ import tiktoken
 import torch
 import os
 
-# TODO: handle migrating data to different device
 
-
-class BookData:
+class BookDataLoader:
 
     def __init__(
         self,
         dir_with_books: str,
         train_fraction: float,
         tokenizer: tiktoken.core.Encoding,
+        window_size_default : int,
+        batch_size_default : int,
     ) -> None:
         self.dir_with_books =  dir_with_books
         self.train_fraction = train_fraction
         self.tokenizer = tokenizer
-        self.make_train_val()
+        self.window_size_default = window_size_default
+        self.batch_size_default = batch_size_default
+        self.make_train_val_sets()
 
 
-    def make_train_val(self):
+    def make_train_val_sets(self):
         self.train = list()
         self.val = list()
         for book in os.listdir(self.dir_with_books):
@@ -33,12 +35,14 @@ class BookData:
 
     def get_batch(
         self,
-        batch_size: int,
-        window_size: int,
-        from_train: bool = True
+        batch_size: int = None,
+        window_size: int = None,
+        from_val: bool = True,
     ) -> tuple[torch.tensor, torch.tensor]:
-        data = self.train if from_train else self.val
-        idx_sequence_start = torch.randint(len(data) - window_size, size=(batch_size,))
+        batch_size = self.batch_size_default if batch_size is None else batch_size
+        window_size = self.window_size_default if window_size is None else window_size
+        data = self.val if from_val else self.train
+        idx_sequence_start = torch.randint(len(data) - window_size, (batch_size,))
         x = torch.tensor([data[i: i+window_size] for i in idx_sequence_start])
         y = torch.tensor([data[i+1: i+1+window_size] for i in idx_sequence_start])
         return x, y

@@ -3,6 +3,16 @@ from torch import nn
 from torch.nn import functional as F
 
 
+WINDOW_SIZE = 50
+DIM_EMBEDDING = 64
+DIM_HEAD = 32
+NUM_HEADS = 8
+DIM_MLP = 128
+DROPOUT = 0.3
+NUM_BLOCKS = 3
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+
 class AttentionHead(nn.Module):
 
     def __init__(
@@ -13,9 +23,9 @@ class AttentionHead(nn.Module):
     ) -> None:
         super().__init__()
         self.dim_head = dim_head
-        self.key = nn.Linear(dim_embedding, dim_head)
-        self.query = nn.Linear(dim_embedding, dim_head)
-        self.value = nn.Linear(dim_embedding, dim_head)
+        self.key = nn.Linear(dim_embedding, dim_head, bias=False)
+        self.query = nn.Linear(dim_embedding, dim_head, bias=False)
+        self.value = nn.Linear(dim_embedding, dim_head, bias=False)
         self.dropout = nn.Dropout(dropout)
 
     def forward(
@@ -80,15 +90,6 @@ class TransformerBlock(nn.Module):
         return x
 
 
-WINDOW_SIZE = 100
-DIM_EMBEDDING = 64
-DIM_HEAD = 32
-NUM_HEADS = 8
-DIM_MLP = 128
-DROPOUT = 0.3
-NUM_BLOCKS = 3
-
-
 class SimpleGPT(nn.Module):
 
     def __init__(
@@ -96,6 +97,13 @@ class SimpleGPT(nn.Module):
         vocab_size: int,
     ):
         super().__init__()
+        self.WINDOW_SIZE = WINDOW_SIZE
+        self.DIM_EMBEDDING = DIM_EMBEDDING
+        self.DIM_HEAD = DIM_HEAD
+        self.NUM_HEADS = NUM_HEADS
+        self.DIM_MLP = DIM_MLP
+        self.DROPOUT = DROPOUT
+        self.NUM_BLOCKS = NUM_BLOCKS
         self.token_emb = nn.Embedding(vocab_size, DIM_EMBEDDING)
         self.position_emb = nn.Embedding(WINDOW_SIZE, DIM_EMBEDDING)
         self.transformer_blocks = nn.Sequential(
@@ -110,8 +118,9 @@ class SimpleGPT(nn.Module):
         y: torch.tensor = None,
     ):
         B, T = x.shape
+        x = x.to(DEVICE)
         token_embedding = self.token_emb(x)
-        position_embedding = self.position_emb(torch.arange(T))
+        position_embedding = self.position_emb(torch.arange(T, device=DEVICE))
         x = token_embedding + position_embedding
         x = self.transformer_blocks(x)
         x = self.layernorm(x)
@@ -120,6 +129,7 @@ class SimpleGPT(nn.Module):
             return logits
         else:
             B, T, C = logits.shape
+            y = y.to(DEVICE)
             loss = F.cross_entropy(logits.view(B*T, C), y.view(B*T))
             return loss
 
@@ -130,7 +140,7 @@ class SimpleGPT(nn.Module):
     ):
         for _ in range(new_tokens):
             x_lookback = x[:, -WINDOW_SIZE:]
-            logits = self.forward(x_lookback)[:, -1, :]
+            logits = self.forward(x_lookback)[:, -1, :] # Take final item per batch
             probability = F.softmax(logits, dim=-1)
             out = torch.multinomial(probability, num_samples=1)
             x = torch.cat((x, out), dim=1)
