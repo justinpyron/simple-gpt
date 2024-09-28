@@ -5,7 +5,7 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 import os
 import time
-from datetime import datetime, UTC
+from datetime import datetime
 
 
 NUM_BATCHES_EVALUATE = 20
@@ -27,7 +27,7 @@ class Trainer:
         self.save_dir = save_dir
         self.batches_trained_on = 0
         self.loss_curve = list()
-        self.birthday = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M")
+        self.birthday = datetime.now().strftime("%Y-%m-%dT%H:%M")
         self.optimizer = AdamW(self.model.parameters(), lr=lr)
         self.scheduler = CosineAnnealingWarmRestarts(self.optimizer, T_0=T_0, T_mult=T_mult)
 
