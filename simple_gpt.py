@@ -96,6 +96,13 @@ class SimpleGPT(nn.Module):
         vocab_size: int,
     ):
         super().__init__()
+        self.WINDOW_SIZE
+        self.DIM_EMBEDDING
+        self.DIM_HEAD
+        self.NUM_HEADS
+        self.DIM_MLP
+        self.DROPOUT
+        self.NUM_BLOCKS
         self.token_emb = nn.Embedding(vocab_size, DIM_EMBEDDING)
         self.position_emb = nn.Embedding(WINDOW_SIZE, DIM_EMBEDDING)
         self.transformer_blocks = nn.Sequential(
@@ -130,7 +137,7 @@ class SimpleGPT(nn.Module):
     ):
         for _ in range(new_tokens):
             x_lookback = x[:, -WINDOW_SIZE:]
-            logits = self.forward(x_lookback)[:, -1, :]
+            logits = self.forward(x_lookback)[:, -1, :] # Take final item per batch
             probability = F.softmax(logits, dim=-1)
             out = torch.multinomial(probability, num_samples=1)
             x = torch.cat((x, out), dim=1)
