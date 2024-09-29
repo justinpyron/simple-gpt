@@ -3,12 +3,13 @@ from torch import nn
 from torch.nn import functional as F
 
 
+# Hyperparameters
 WINDOW_SIZE = 50
 DIM_EMBEDDING = 64
 DIM_HEAD = 32
 NUM_HEADS = 8
-DIM_MLP = 2 * DIM_EMBEDDING
-DROPOUT = 0.3
+DIM_MLP = 4 * DIM_EMBEDDING
+DROPOUT = 0.2
 NUM_BLOCKS = 4
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -73,9 +74,11 @@ class TransformerBlock(nn.Module):
         dropout: float,
     ) -> None:
         super().__init__()
+        # Attention sub-layer
         self.layernorm_1 = nn.LayerNorm(dim_embedding)
         self.attention = MultiHeadedAttention(dim_embedding, dim_head, num_heads, dropout)
         self.dropout1 = nn.Dropout(dropout)
+        # Fully-connected sub-layer
         self.layernorm_2 = nn.LayerNorm(dim_embedding)
         self.mlp = nn.Sequential(
             nn.Linear(dim_embedding, dim_mlp),
@@ -106,9 +109,10 @@ class SimpleGPT(nn.Module):
         self.NUM_BLOCKS = NUM_BLOCKS
         self.token_emb = nn.Embedding(vocab_size, DIM_EMBEDDING)
         self.position_emb = nn.Embedding(WINDOW_SIZE, DIM_EMBEDDING)
-        self.transformer_blocks = nn.Sequential(
-            *[TransformerBlock(DIM_EMBEDDING, DIM_HEAD, NUM_HEADS, DIM_MLP, DROPOUT) for i in range(NUM_BLOCKS)]
-        )
+        self.transformer_blocks = nn.Sequential(*[
+            TransformerBlock(DIM_EMBEDDING, DIM_HEAD, NUM_HEADS, DIM_MLP, DROPOUT)
+            for i in range(NUM_BLOCKS)
+        ])
         self.layernorm = nn.LayerNorm(DIM_EMBEDDING)
         self.classification_head = nn.Linear(DIM_EMBEDDING, vocab_size)
         self.apply(self.init_weights)
@@ -119,7 +123,8 @@ class SimpleGPT(nn.Module):
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
         if isinstance(module, nn.Embedding):
-            nn.init.normal_(module.weight, 0, 1/self.DIM_EMBEDDING)
+            nn.init.normal_(module.weight, 0, 1/torch.tensor(2 * self.DIM_EMBEDDING).sqrt())
+            # Multiply by 2 bc token embedding + position embeddings get added
 
     def forward(
         self,
