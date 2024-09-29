@@ -21,12 +21,23 @@ class BookDataLoader:
         self.make_train_val_sets()
 
 
-    def make_train_val_sets(self):
+    def process(self, text: str) -> str:
+        gutenburg_start = "*** START OF THE PROJECT GUTENBERG EBOOK"
+        gutenburg_end = "*** END OF THE PROJECT GUTENBERG EBOOK"
+        lines = text.splitlines()
+        idx_start = next((line_num for line_num, line in enumerate(lines) if gutenburg_start in line), 0) + 1
+        idx_end = next((line_num for line_num, line in enumerate(lines) if gutenburg_end in line), len(lines))
+        lines = lines[idx_start : idx_end]
+        lines = " ".join([line.strip() for line in lines if line != ""])
+        return lines
+
+
+    def make_train_val_sets(self) -> None:
         self.train = list()
         self.val = list()
         for book in os.listdir(self.dir_with_books):
             with open(os.path.join(self.dir_with_books, book), "r") as f:
-                text = f.read()
+                text = self.process(f.read())
             text_encoded = self.tokenizer.encode(text)
             threshold = int(self.train_fraction * len(text_encoded))
             self.train += text_encoded[:threshold]
