@@ -8,8 +8,8 @@ import time
 from datetime import datetime
 
 
-NUM_BATCHES_EVALUATE = 20
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
 
 class Trainer:
 
@@ -18,18 +18,21 @@ class Trainer:
         model : SimpleGPT,
         dataloader : BookDataLoader,
         lr : float,
+        lr_min : float,
         T_0: int,
         T_mult: int,
+        num_batches_evaluate : int,
         save_dir : str,
     ) -> None:
         self.model = model.to(DEVICE)
         self.dataloader = dataloader
+        self.optimizer = AdamW(self.model.parameters(), lr=lr)
+        self.scheduler = CosineAnnealingWarmRestarts(self.optimizer, T_0=T_0, T_mult=T_mult, eta_min=lr_min)
+        self.num_batches_evaluate = num_batches_evaluate
         self.save_dir = save_dir
         self.batches_trained_on = 0
         self.loss_curve = list()
-        self.birthday = datetime.now().strftime("%Y-%m-%dT%H:%M")
-        self.optimizer = AdamW(self.model.parameters(), lr=lr)
-        self.scheduler = CosineAnnealingWarmRestarts(self.optimizer, T_0=T_0, T_mult=T_mult)
+        self.birthday = datetime.now().strftime("%Y-%m-%dT%H_%M")
 
 
     def evaluate(
@@ -66,19 +69,24 @@ class Trainer:
     ):
         self.model.train()
         best_loss = torch.inf
-        execution_time = list()
+        stopwatch = list()
         for i in range(num_batches):
             start = time.time()
             self.train_on_one_batch()
-            execution_time.append(time.time() - start)
+            stopwatch.append(time.time() - start)
             if i % evaluate_every == 0:
-                loss = self.evaluate(NUM_BATCHES_EVALUATE)
+                loss = self.evaluate(self.num_batches_evaluate)
                 self.loss_curve.append((self.batches_trained_on, loss))
                 if loss < best_loss:
                     self.save()
                     best_loss = loss
                 if verbose:
-                    print(f"Batch {self.batches_trained_on:5} | VAL LOSS = {loss:6.3f} | {torch.tensor(execution_time).mean():6.3f} s/batch | lr = {self.scheduler._last_lr[0]:.5f}")
+                    print(" | ".join([
+                        f"Batch {self.batches_trained_on:5}",
+                        f"Loss = {loss:6.3f}",
+                        f"Stopwatch = {sum(stopwatch)/60:5.1f} min ({sum(stopwatch) / len(stopwatch):4.2f} s/batch)",
+                        f"lr = {self.scheduler._last_lr[0]:.2E}",
+                    ]))
             self.batches_trained_on += 1
 
 
