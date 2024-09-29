@@ -7,9 +7,9 @@ WINDOW_SIZE = 50
 DIM_EMBEDDING = 64
 DIM_HEAD = 32
 NUM_HEADS = 8
-DIM_MLP = 128
+DIM_MLP = 2 * DIM_EMBEDDING
 DROPOUT = 0.3
-NUM_BLOCKS = 3
+NUM_BLOCKS = 4
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -111,6 +111,15 @@ class SimpleGPT(nn.Module):
         )
         self.layernorm = nn.LayerNorm(DIM_EMBEDDING)
         self.classification_head = nn.Linear(DIM_EMBEDDING, vocab_size)
+        self.apply(self.init_weights)
+    
+    def init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            nn.init.xavier_normal_(module.weight)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
+        if isinstance(module, nn.Embedding):
+            nn.init.normal_(module.weight, 0, 1/self.DIM_EMBEDDING)
 
     def forward(
         self,
