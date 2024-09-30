@@ -11,7 +11,7 @@ NUM_HEADS = 8
 DIM_MLP = 4 * DIM_EMBEDDING
 DROPOUT = 0.2
 NUM_BLOCKS = 4
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
 
 
 class AttentionHead(nn.Module):
