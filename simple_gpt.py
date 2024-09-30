@@ -4,13 +4,13 @@ from torch.nn import functional as F
 
 
 # Hyperparameters
-WINDOW_SIZE = 50
-DIM_EMBEDDING = 64
-DIM_HEAD = 32
+WINDOW_SIZE = 80
+DIM_EMBEDDING = 128
+DIM_HEAD = 64
 NUM_HEADS = 8
 DIM_MLP = 4 * DIM_EMBEDDING
 DROPOUT = 0.2
-NUM_BLOCKS = 4
+NUM_BLOCKS = 8
 DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
 
 
@@ -152,6 +152,7 @@ class SimpleGPT(nn.Module):
         x: torch.tensor,
         new_tokens: int,
     ):
+        self.eval()
         with torch.no_grad():
             for _ in range(new_tokens):
                 x_lookback = x[:, -self.WINDOW_SIZE:]
