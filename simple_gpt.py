@@ -152,10 +152,11 @@ class SimpleGPT(nn.Module):
         x: torch.tensor,
         new_tokens: int,
     ):
-        for _ in range(new_tokens):
-            x_lookback = x[:, -WINDOW_SIZE:]
-            logits = self.forward(x_lookback)[:, -1, :] # Take final item per batch
-            probability = F.softmax(logits, dim=-1)
-            out = torch.multinomial(probability, num_samples=1)
-            x = torch.cat((x, out), dim=1)
-        return x
+        with torch.no_grad():
+            for _ in range(new_tokens):
+                x_lookback = x[:, -self.WINDOW_SIZE:]
+                logits = self.forward(x_lookback)[:, -1, :] # Take final item per batch
+                probability = F.softmax(logits, dim=-1)
+                out = torch.multinomial(probability, num_samples=1)
+                x = torch.cat((x, out), dim=1)
+            return x
