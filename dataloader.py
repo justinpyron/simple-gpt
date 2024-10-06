@@ -3,6 +3,20 @@ import torch
 import os
 
 
+def process_book_text(
+    text: str,
+    num_lines_to_skip: int,
+) -> str:
+    gutenburg_start = "*** START OF THE PROJECT GUTENBERG EBOOK"
+    gutenburg_end = "*** END OF THE PROJECT GUTENBERG EBOOK"
+    lines = text.splitlines()
+    idx_start = next((line_num for line_num, line in enumerate(lines) if gutenburg_start in line), -1) + 1
+    idx_end = next((line_num for line_num, line in enumerate(lines) if gutenburg_end in line), len(lines))
+    lines = lines[max(idx_start, num_lines_to_skip) : idx_end]
+    lines = " ".join([line.strip() for line in lines if line != ""])
+    return lines
+
+
 class BookDataLoader:
 
     def __init__(
@@ -23,23 +37,12 @@ class BookDataLoader:
         self.make_train_val_sets()
 
 
-    def process(self, text: str) -> str:
-        gutenburg_start = "*** START OF THE PROJECT GUTENBERG EBOOK"
-        gutenburg_end = "*** END OF THE PROJECT GUTENBERG EBOOK"
-        lines = text.splitlines()
-        idx_start = next((line_num for line_num, line in enumerate(lines) if gutenburg_start in line), -1) + 1
-        idx_end = next((line_num for line_num, line in enumerate(lines) if gutenburg_end in line), len(lines))
-        lines = lines[max(idx_start, self.num_lines_to_skip) : idx_end]
-        lines = " ".join([line.strip() for line in lines if line != ""])
-        return lines
-
-
     def make_train_val_sets(self) -> None:
         self.train = list()
         self.val = list()
         for book in os.listdir(self.dir_with_books):
             with open(os.path.join(self.dir_with_books, book), "r") as f:
-                text = self.process(f.read())
+                text = process_book_text(f.read(), self.num_lines_to_skip)
             # text_encoded = self.tokenizer.encode(text) # tiktoken
             text_encoded = self.tokenizer.encode(text).ids # Custom HuggingFace tokenizer
             threshold = int(self.train_fraction * len(text_encoded))
