@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
 
 
 class Trainer:
@@ -65,6 +65,7 @@ class Trainer:
         self,
         num_batches : int,
         evaluate_every : int,
+        save_model: bool = True,
         verbose : bool = True,
     ):
         self.model.train()
@@ -77,7 +78,7 @@ class Trainer:
             if i % evaluate_every == 0:
                 loss = self.evaluate(self.num_batches_evaluate)
                 self.loss_curve.append((self.batches_trained_on, loss))
-                if loss < best_loss:
+                if loss < best_loss and save_model:
                     self.save()
                     best_loss = loss
                 if verbose:

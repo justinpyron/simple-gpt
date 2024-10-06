@@ -1,6 +1,20 @@
-import tiktoken
+from tokenizers import Tokenizer
 import torch
 import os
+
+
+def process_book_text(
+    text: str,
+    num_lines_to_skip: int,
+) -> str:
+    gutenburg_start = "*** START OF THE PROJECT GUTENBERG EBOOK"
+    gutenburg_end = "*** END OF THE PROJECT GUTENBERG EBOOK"
+    lines = text.splitlines()
+    idx_start = next((line_num for line_num, line in enumerate(lines) if gutenburg_start in line), -1) + 1
+    idx_end = next((line_num for line_num, line in enumerate(lines) if gutenburg_end in line), len(lines))
+    lines = lines[max(idx_start, num_lines_to_skip) : idx_end]
+    lines = " ".join([line.strip() for line in lines if line != ""])
+    return lines
 
 
 class BookDataLoader:
@@ -9,25 +23,27 @@ class BookDataLoader:
         self,
         dir_with_books: str,
         train_fraction: float,
-        tokenizer: tiktoken.core.Encoding,
-        window_size_default : int,
-        batch_size_default : int,
+        tokenizer: Tokenizer,
+        window_size_default: int,
+        batch_size_default: int,
+        num_lines_to_skip: int = 0,
     ) -> None:
         self.dir_with_books =  dir_with_books
         self.train_fraction = train_fraction
         self.tokenizer = tokenizer
         self.window_size_default = window_size_default
         self.batch_size_default = batch_size_default
+        self.num_lines_to_skip = num_lines_to_skip  # Avoid table of contents
         self.make_train_val_sets()
 
 
-    def make_train_val_sets(self):
+    def make_train_val_sets(self) -> None:
         self.train = list()
         self.val = list()
         for book in os.listdir(self.dir_with_books):
             with open(os.path.join(self.dir_with_books, book), "r") as f:
-                text = f.read()
-            text_encoded = self.tokenizer.encode(text)
+                text = process_book_text(f.read(), self.num_lines_to_skip)
+            text_encoded = self.tokenizer.encode(text).ids
             threshold = int(self.train_fraction * len(text_encoded))
             self.train += text_encoded[:threshold]
             self.val += text_encoded[threshold:]
