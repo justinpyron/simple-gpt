@@ -1,4 +1,5 @@
 import os
+import click
 from dataloader import process_book_text
 from tokenizers import (
     decoders,
@@ -9,6 +10,7 @@ from tokenizers import (
     trainers,
     Tokenizer,
 )
+
 
 DIR_WITH_BOOKS = "data/"
 
@@ -44,6 +46,18 @@ def create_tokenizer(
     tokenizer.save(f"tokenizer_{vocab_size}.json")
 
 
-if __name__ == "__main__":
+@click.command()
+@click.option(
+    "vocab_size",
+    "-vs",
+    required=True,
+    type=int,
+    help="The vocabulary size of the tokenizer"
+)
+def main(vocab_size):
     corpus = load_text(DIR_WITH_BOOKS)
-    create_tokenizer(corpus, vocab_size=123)
+    create_tokenizer(corpus, vocab_size)
+
+
+if __name__ == "__main__":
+    main()
