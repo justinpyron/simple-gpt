@@ -43,8 +43,7 @@ class BookDataLoader:
         for book in os.listdir(self.dir_with_books):
             with open(os.path.join(self.dir_with_books, book), "r") as f:
                 text = process_book_text(f.read(), self.num_lines_to_skip)
-            # text_encoded = self.tokenizer.encode(text) # tiktoken
-            text_encoded = self.tokenizer.encode(text).ids # Custom HuggingFace tokenizer
+            text_encoded = self.tokenizer.encode(text).ids
             threshold = int(self.train_fraction * len(text_encoded))
             self.train += text_encoded[:threshold]
             self.val += text_encoded[threshold:]
