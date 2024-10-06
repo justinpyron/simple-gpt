@@ -1,4 +1,4 @@
-import tiktoken
+from tokenizers import Tokenizer
 import torch
 import os
 
@@ -23,7 +23,7 @@ class BookDataLoader:
         self,
         dir_with_books: str,
         train_fraction: float,
-        tokenizer: tiktoken.core.Encoding,
+        tokenizer: Tokenizer,
         window_size_default: int,
         batch_size_default: int,
         num_lines_to_skip: int = 0,
