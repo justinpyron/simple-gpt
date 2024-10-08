@@ -61,7 +61,7 @@ with col1:
             st.warning("Enter some text first")
 with col2:
     if st.button("Reset", use_container_width=True):
-        st.session_state.text = ""
+        st.session_state.text = user_input
 
 if len(st.session_state.text) > 0:
     highlighted_output = highlight_text(user_input, st.session_state.text)
