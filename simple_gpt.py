@@ -130,11 +130,13 @@ class SimpleGPT(nn.Module):
         self,
         x: torch.tensor,  # Tensor of token vocab indices of shape (B, T) = (batch size, sequence size)
         y: torch.tensor = None,
+        device: str = None,
     ):
+        device = DEVICE if device is None else device
         B, T = x.shape
-        x = x.to(DEVICE)
+        x = x.to(device)
         token_embedding = self.token_emb(x)
-        position_embedding = self.position_emb(torch.arange(T, device=DEVICE))
+        position_embedding = self.position_emb(torch.arange(T, device=device))
         x = token_embedding + position_embedding
         x = self.transformer_blocks(x)
         x = self.layernorm(x)
@@ -143,7 +145,7 @@ class SimpleGPT(nn.Module):
             return logits
         else:
             B, T, C = logits.shape
-            y = y.to(DEVICE)
+            y = y.to(device)
             loss = F.cross_entropy(logits.view(B*T, C), y.view(B*T))
             return loss
 
@@ -151,12 +153,13 @@ class SimpleGPT(nn.Module):
         self,
         x: torch.tensor,
         new_tokens: int,
+        device: str = None,
     ):
         self.eval()
         with torch.no_grad():
             for _ in range(new_tokens):
                 x_lookback = x[:, -self.WINDOW_SIZE:]
-                logits = self.forward(x_lookback)[:, -1, :] # Take final item per batch
+                logits = self.forward(x_lookback, device=device)[:, -1, :] # Take final item per batch
                 probability = F.softmax(logits, dim=-1)
                 out = torch.multinomial(probability, num_samples=1)
                 x = torch.cat((x, out), dim=1)
