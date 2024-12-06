@@ -152,15 +152,16 @@ class SimpleGPT(nn.Module):
     def generate(
         self,
         x: torch.tensor,
-        new_tokens: int,
+        n_new_tokens: int,
+        temperature: float = 1e-3,
         device: str = None,
     ):
         self.eval()
         with torch.no_grad():
-            for _ in range(new_tokens):
+            for _ in range(n_new_tokens):
                 x_lookback = x[:, -self.WINDOW_SIZE:]
                 logits = self.forward(x_lookback, device=device)[:, -1, :] # Take final item per batch
-                probability = F.softmax(logits, dim=-1)
+                probability = F.softmax(logits / temperature, dim=-1)
                 out = torch.multinomial(probability, num_samples=1)
                 x = torch.cat((x, out), dim=1)
             return x

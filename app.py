@@ -56,7 +56,13 @@ with col1:
     if st.button("Generate", type="primary", use_container_width=True):
         if len(st.session_state.text) > 0:
             model_input = torch.tensor(tokenizer.encode(st.session_state.text).ids).unsqueeze(dim=0)
-            st.session_state.text = tokenizer.decode(model.generate(model_input, new_tokens=num_tokens_to_generate, device="cpu")[0].tolist())
+            generated_tokens = model.generate(
+                model_input,
+                n_new_tokens=num_tokens_to_generate,
+                temperature=0.1,
+                device="cpu"
+            )[0].tolist()
+            st.session_state.text = tokenizer.decode(generated_tokens)
         else:
             st.warning("Enter some text first")
 with col2:
