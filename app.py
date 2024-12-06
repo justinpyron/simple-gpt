@@ -43,13 +43,24 @@ user_input = st.text_area("Enter some text", "")
 if len(st.session_state.text) == 0:
     st.session_state.text = user_input
 
-num_tokens_to_generate = st.slider(
-    "Number of tokens to generate",
-    min_value=10,
-    max_value=50,
-    step=10,
-    value=30,
-)
+col1, col2 = st.columns(2)
+with col1:
+    num_tokens_to_generate = st.slider(
+        "Number of tokens to generate",
+        min_value=10,
+        max_value=50,
+        step=10,
+        value=30,
+    )
+with col2:
+    temperature = st.slider(
+        "Temperature",
+        min_value=0.0,
+        max_value=2.0,
+        step=0.1,
+        value=0.1,
+        help="Controls randomness of generated text. Lower values are less random.",
+    )
 
 col1, col2 = st.columns(2)
 with col1:
@@ -59,7 +70,7 @@ with col1:
             generated_tokens = model.generate(
                 model_input,
                 n_new_tokens=num_tokens_to_generate,
-                temperature=0.1,
+                temperature=max(1e-3, temperature),
                 device="cpu"
             )[0].tolist()
             st.session_state.text = tokenizer.decode(generated_tokens)
