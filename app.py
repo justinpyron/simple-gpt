@@ -4,8 +4,7 @@ from simple_gpt import SimpleGPT
 from tokenizers import Tokenizer
 
 
-st.set_page_config(page_title="Text Generator", layout="centered")
-
+st.set_page_config(page_title="SimpleGPT", layout="centered", page_icon="📝")
 
 def highlight_text(
     text_original: str,
@@ -22,20 +21,18 @@ tokenizer = Tokenizer.from_file("tokenizer_500.json")
 model = SimpleGPT(tokenizer.get_vocab_size())
 model.load_state_dict(torch.load("saved_models/model_streamlit_app.pt", weights_only=True))
 
+what_is_this_app = """
+This app demos a simple generative text model. 
 
-st.title("Simple Generative Text Model")
-with st.expander("How it works"):
-    st.markdown(
-        "This app demos a simple generative text model. The model has a "
-        "[simple transformer architecture](https://github.com/justinpyron/simple-gpt/blob/main/simple_gpt.py). "
-        "It was trained on a corpus of 40 books from [Project Gutenberg](https://www.gutenberg.org/)."
-        "\n\nAt the moment, it produces mostly correct English words. "
-        "However, generated words are mostly random with little connection to the previous context. "
-        "In addition, the grammar is questionable, and the influence of the training corpus "
-        "is quite evident. For example, you'll probably be able to notice that the training "
-        "set included Tolstoy and Dostoevsky."
-        "\n\nThe plan is to improve the shortcomings above by training on a larger and more diverse dataset."
-    )
+It uses a [transformer architecture](https://github.com/justinpyron/simple-gpt/blob/main/simple_gpt.py).
+It was trained on a corpus of 40 books from [Project Gutenberg](https://www.gutenberg.org/).
+
+Source code 👉 [GitHub](https://github.com/justinpyron/simple-gpt)
+"""
+
+st.title("SimpleGPT 📝")
+with st.expander("What is this app?"):
+    st.markdown(what_is_this_app)
 
 if "text" not in st.session_state:
     st.session_state.text = ""
