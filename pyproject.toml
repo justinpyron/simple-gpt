@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Justin Pyron <justinpyron@gmail.com>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -19,7 +20,6 @@ ipykernel = "^6.29.5"
 ipywidgets = "^8.1.5"
 tiktoken = "^0.7.0"
 tokenizers = "^0.20.0"
-
 
 [build-system]
 requires = ["poetry-core"]
